@@ -1,0 +1,5 @@
+.owner-key
+.dev.vars
+.wrangler/
+node_modules/
+.url

@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>나의 장소</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@700&family=Gowun+Dodum&display=swap">
+<style>
+/* 한 화면 : 위에 이름과 시간, 가운데 3D 화면, 아래 조작판과 사진첩. 색은 :root에서만 바꾼다 */
+:root{
+  --bg:#1c2040; --card:#272c52; --line:#3d4372;
+  --ink:#f7ecdd; --ink-dim:#bdb5c4; --accent:#f39a5b;
+  --f-title:"Gowun Batang","Noto Serif KR",serif;
+  --f-body:"Gowun Dodum","Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+  color-scheme:dark;
+}
+html,body{margin:0;background:var(--bg);color:var(--ink)}
+body{font-family:var(--f-body);font-size:15px;line-height:1.6;padding:20px max(16px,env(safe-area-inset-left,0px)) 32px}
+.wrap{max-width:1040px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{font-family:var(--f-title);font-size:clamp(28px,5vw,40px);margin:0;line-height:1.1}
+.sub{color:var(--ink-dim);margin:4px 0 0}
+.side{display:flex;gap:8px;flex-wrap:wrap}
+.pill{border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-size:14px;white-space:nowrap}
+.pill b{color:var(--accent);font-weight:400}
+.stage{position:relative;width:100%;aspect-ratio:16/9;border:1px solid var(--line);border-radius:4px;overflow:hidden;background:#2a2d55;touch-action:none}
+canvas{display:block;width:100%;height:100%;cursor:grab}
+.tag{position:absolute;transform:translate(-50%,-100%);padding:2px 8px;border-radius:999px;background:rgba(28,32,64,.85);font-size:clamp(11px,1.8vw,14px);white-space:nowrap;pointer-events:none}
+.tag.me{background:rgba(243,154,91,.92);color:#2a160a}
+.fail{position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center}
+.flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+.controls{display:flex;gap:8px;flex-wrap:wrap}
+.pad{display:flex;gap:8px}
+button{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:6px;min-height:44px;padding:8px 14px;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button:disabled{opacity:.5;cursor:default}
+button.primary{background:var(--accent);color:#2a160a;border-color:var(--accent);font-weight:700;flex:1 1 180px}
+.pad button{min-width:48px}
+.msg{margin:0;min-height:1.6em}
+.help{margin:0;color:var(--ink-dim);font-size:13px}
+h2{font-family:var(--f-title);font-size:20px;margin:10px 0 0}
+.photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin:0;padding:0;list-style:none}
+.photos img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:3px;border:1px solid var(--line)}
+.photos span{display:block;color:var(--ink-dim);font-size:13px}
+.empty{color:var(--ink-dim);margin:0;font-size:14px;border:1px dashed var(--line);border-radius:6px;padding:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1 id="title">나의 장소</h1>
+      <p class="sub" id="subtitle">걸어 다니다 앉아서 해가 지는 걸 봅니다.</p>
+    </div>
+    <div class="side">
+      <span class="pill" id="people" hidden>함께 <b id="peopleN">1</b>명</span>
+      <span class="pill" id="solo" hidden>혼자 보는 중</span>
+      <span class="pill">지금 <b id="clock">해 질 녘</b></span>
+    </div>
+  </header>
+
+  <div class="stage" id="stage">
+    <canvas id="scene" aria-label="3D 풍경"></canvas>
+    <div class="tag me" id="meTag"></div>
+    <div class="flash" id="flash"></div>
+  </div>
+
+  <div class="controls">
+    <div class="pad">
+      <button id="turnL" aria-label="왼쪽으로 돌기">◀</button>
+      <button id="fwd" aria-label="앞으로 걷기">▲</button>
+      <button id="back" aria-label="뒤로 걷기">▼</button>
+      <button id="turnR" aria-label="오른쪽으로 돌기">▶</button>
+    </div>
+    <button id="act" class="primary" disabled>앉을 곳으로 걸어가 보세요</button>
+    <button id="snap">사진 찍기</button>
+  </div>
+  <p class="msg" id="msg" aria-live="polite"></p>
+  <p class="help">화면을 끌어서 둘러보고, 바닥을 누르면 그쪽으로 걸어갑니다. 키보드는 ↑↓ 걷기, ←→ 돌기, 스페이스 앉기, P 사진.</p>
+
+  <h2>사진첩</h2>
+  <ul class="photos" id="photos"></ul>
+  <p class="empty" id="empty">사진 찍기를 누르면 지금 화면이 여기에 모입니다. 사진은 이 브라우저에만 남습니다.</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+'use strict';
+const $ = (id) => document.getElementById(id);
+if (!window.THREE) { $('stage').insertAdjacentHTML('beforeend', '<p class="fail">3D 도구(Three.js)를 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.</p>'); return; }
+
+// ======================================================================
+// 1. 설정 : 장소마다 여기와 '3. 장소 만들기'만 바꾼다
+// ======================================================================
+const CONFIG = {
+  title: '나의 장소',
+  subtitle: '걸어 다니다 앉아서 해가 지는 걸 봅니다.',
+  storageKey: 'my-place',            // 브라우저 저장 이름. 장소마다 다르게
+  ownerName: '주인',                  // 아티팩트 밖에서 주인 이름은 서버 설정(cloudflare-deploy)이 정한다
+  ownerHood: '#5aa6de',               // 주인 후드 색
+  friendHoods: ['#f2a65a', '#8cc084', '#e98aa6', '#b59be0', '#f0c75e', '#6cc4c4'],
+  nickA: ['졸린', '수줍은', '신난', '느긋한', '배고픈', '반짝이는', '용감한', '다정한'],
+  nickB: ['갈매기', '고양이', '여행자', '산책자', '구름', '노을', '나무', '기타'],
+  // 시간 흐름 : 하늘 위 색, 지평선 색, 해 색, 밝기. 앉아 있으면 3배 빨리 흐른다
+  phases: [
+    { name: '해 질 녘', top: '#7fa9d6', bottom: '#f6c48e', sun: '#ffe0a8', light: 1.0 },
+    { name: '노을', top: '#4d5e9e', bottom: '#f3905b', sun: '#ff9a5c', light: 0.8 },
+    { name: '어스름', top: '#2b2f5e', bottom: '#8c5a7a', sun: '#d0706a', light: 0.45 },
+    { name: '밤', top: '#0f1230', bottom: '#25284f', sun: '#3a3d66', light: 0.22 },
+  ],
+  dayLength: 240,                     // 해 질 녘에서 밤까지 걸리는 초
+  sunAzimuth: 0,                      // 해가 지는 방향(도). 0 = 처음 바라보는 앞쪽, 90 = 오른쪽
+  walkArea: { x0: -18, x1: 18, z0: -10, z1: 14 },   // 걸을 수 있는 범위
+  start: { x: 0, z: 10, face: 0 },    // 처음 위치와 바라보는 방향(0 = 앞쪽 -z)
+  sitSpots: [{ x: 0, z: 3, label: '돗자리' }],
+};
+
+// ======================================================================
+// 2. 장면 : 하늘, 해, 빛, 안개
+// ======================================================================
+const canvas = $('scene'), stage = $('stage');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(55, 16 / 9, 0.1, 800);
+const skyCanvas = document.createElement('canvas'); skyCanvas.width = 2; skyCanvas.height = 256;
+const skyTex = new THREE.CanvasTexture(skyCanvas);
+scene.background = skyTex;
+scene.fog = new THREE.Fog(0xf6c48e, 60, 320);
+const hemi = new THREE.HemisphereLight(0xffffff, 0x445566, 0.7); scene.add(hemi);
+const sunLight = new THREE.DirectionalLight(0xffe0a8, 0.9); scene.add(sunLight);
+const sun = new THREE.Mesh(new THREE.SphereGeometry(9, 24, 16), new THREE.MeshBasicMaterial({ color: 0xffe0a8, fog: false }));
+scene.add(sun);
+const nightLights = [];   // 밤에 켜지는 것(창문, 가로등). 3번에서 light()로 등록한다
+
+// ======================================================================
+// 3. 장소 만들기 : 여기를 그 장소답게 바꾼다
+//    blockers : 걸어서 지나갈 수 없는 것(나무, 벽, 사람). { x, z, r }
+// ======================================================================
+const blockers = [];
+const toon = (c) => new THREE.MeshToonMaterial({ color: c });
+function box(w, h, d, color, x, y, z) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), toon(color)); m.position.set(x, y, z); scene.add(m); return m; }
+function tree(x, z, s = 1) {
+  box(0.4 * s, 2 * s, 0.4 * s, 0x6b4a2f, x, s, z);
+  const top = new THREE.Mesh(new THREE.ConeGeometry(1.4 * s, 3 * s, 8), toon(0x3f7d4e)); top.position.set(x, 3.2 * s, z); scene.add(top);
+  blockers.push({ x, z, r: 0.6 * s });
+}
+function light(mesh) { nightLights.push(mesh); return mesh; }
+function house(x, z, w, h, color) {
+  box(w, h, w, color, x, h / 2, z);
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(w * 0.8, h * 0.5, 4), toon(0xa8553a)); roof.position.set(x, h + h * 0.25, z); roof.rotation.y = Math.PI / 4; scene.add(roof);
+  const win = new THREE.Mesh(new THREE.PlaneGeometry(w * 0.3, h * 0.25), new THREE.MeshBasicMaterial({ color: 0x2a2a3a }));
+  win.position.set(x, h * 0.55, z + w / 2 + 0.01); scene.add(win); light(win);
+}
+function buildPlace() {
+  // 땅 : 걷는 곳
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(60, 40), toon(0x6f9a52));
+  ground.rotation.x = -Math.PI / 2; ground.position.z = 2; ground.name = 'ground'; scene.add(ground);
+  // 물 : 앞쪽 멀리
+  const water = new THREE.Mesh(new THREE.PlaneGeometry(600, 200), new THREE.MeshPhongMaterial({ color: 0x5b7fa8, shininess: 80 }));
+  water.rotation.x = -Math.PI / 2; water.position.set(0, -2, -110); scene.add(water);
+  // 건너편 마을 : 밤에 창문이 켜진다
+  for (let i = 0; i < 18; i++) house(-60 + i * 7 + Math.sin(i) * 2, -150 - (i % 3) * 8, 4 + (i % 3), 5 + (i % 4) * 2, [0xf2e6d8, 0xe8d2b0, 0xd8b8a0][i % 3]);
+  // 나무
+  [[-10, -4], [-14, 6], [12, -2], [15, 8]].forEach(([x, z]) => tree(x, z));
+  // 돗자리 : CONFIG.sitSpots 자리에 둔다
+  CONFIG.sitSpots.forEach((s) => box(2.4, 0.05, 1.6, 0xd9534f, s.x, 0.03, s.z));
+  // 낮은 담 : 앞쪽 끝
+  box(36, 0.8, 0.5, 0xcfc4b0, 0, 0.4, -10.5);
+}
+buildPlace();
+
+// ======================================================================
+// 4. 캐릭터 : 머리가 큰 귀여운 모습. 후드 색으로 사람을 구분한다
+// ======================================================================
+function makeAvatar(hood) {
+  const g = new THREE.Group();
+  const hoodMat = toon(hood);
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.4, 0.7, 12), hoodMat); body.position.y = 0.65; g.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.42, 20, 16), toon(0xf6d7bf)); head.position.y = 1.35; g.add(head);
+  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.44, 20, 16, 0, Math.PI * 2, 0, Math.PI * 0.55), toon(0x3a2a22)); hair.position.y = 1.38; g.add(hair);
+  const eyeMat = new THREE.MeshBasicMaterial({ color: 0x1a1a1a });
+  [-0.14, 0.14].forEach((x) => { const e = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), eyeMat); e.position.set(x, 1.33, -0.39); g.add(e); });
+  const legs = [-0.14, 0.14].map((x) => { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.35, 8), toon(0x30343f)); l.position.set(x, 0.18, 0); g.add(l); return l; });
+  scene.add(g);
+  return { group: g, legs, hoodMat, walk: 0, hop: 0 };
+}
+function setHood(a, color) { a.hoodMat.color.set(color); }
+function poseAvatar(a, moving, sit, dt) {
+  if (moving) a.walk += dt * 9; else a.walk *= 0.8;
+  a.legs[0].rotation.x = Math.sin(a.walk) * 0.6; a.legs[1].rotation.x = -Math.sin(a.walk) * 0.6;
+  a.hop = Math.max(0, a.hop - dt * 2);
+  a.group.position.y = (sit ? -0.18 : Math.abs(Math.sin(a.walk)) * 0.05) + Math.sin(a.hop * Math.PI) * 0.4;
+}
+
+// ======================================================================
+// 5. 이동, 충돌, 카메라
+// ======================================================================
+const me = { x: CONFIG.start.x, z: CONFIG.start.z, face: CONFIG.start.face, pitch: 0.35, sit: false, target: null, joy: 0 };
+const avatar = makeAvatar(CONFIG.ownerHood);
+const keys = {}; let padMove = 0, padTurn = 0;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+function keepIn(p) {
+  const A = CONFIG.walkArea; p.x = clamp(p.x, A.x0, A.x1); p.z = clamp(p.z, A.z0, A.z1);
+  for (const b of blockers) {
+    const dx = p.x - b.x, dz = p.z - b.z, d = Math.hypot(dx, dz), min = b.r + 0.35;
+    if (d < min && d > 1e-4) { p.x = b.x + dx / d * min; p.z = b.z + dz / d * min; }
+  }
+}
+function move(dt) {
+  const turn = (keys.ArrowLeft || keys.a ? 1 : 0) - (keys.ArrowRight || keys.d ? 1 : 0) + padTurn;
+  const fwd = (keys.ArrowUp || keys.w ? 1 : 0) - (keys.ArrowDown || keys.s ? 1 : 0) + padMove;
+  me.face += turn * dt * 2.2;
+  let moving = false;
+  if (fwd) { me.target = null; me.sit = false; me.x -= Math.sin(me.face) * fwd * dt * 4; me.z -= Math.cos(me.face) * fwd * dt * 4; moving = true; }
+  else if (me.target) {
+    const dx = me.target.x - me.x, dz = me.target.z - me.z, d = Math.hypot(dx, dz);
+    if (d < 0.15) { const then = me.target.then; me.target = null; if (then) then(); }
+    else { me.face = Math.atan2(-dx, -dz); const s = Math.min(d, dt * 4); me.x += dx / d * s; me.z += dz / d * s; moving = true; }
+  }
+  keepIn(me);
+  avatar.group.position.x = me.x; avatar.group.position.z = me.z; avatar.group.rotation.y = me.face;
+  poseAvatar(avatar, moving, me.sit, dt);
+  // 카메라 : 캐릭터 뒤 위에서 따라간다
+  const dist = 5.5, h = 1.4 + me.pitch * 4;
+  camera.position.set(me.x + Math.sin(me.face) * dist, h, me.z + Math.cos(me.face) * dist);
+  camera.lookAt(me.x - Math.sin(me.face) * 6, 1.2, me.z - Math.cos(me.face) * 6);
+  return moving;
+}
+
+// ======================================================================
+// 6. 시간 흐름 : 해가 지고 밤이 된다. 밤에는 nightLights가 켜진다
+// ======================================================================
+let clockT = 0, lastPhase = '';
+const cA = new THREE.Color(), cB = new THREE.Color();
+function mix(a, b, f) { return cA.set(a).lerp(cB.set(b), f).clone(); }
+function updateTime(dt) {
+  clockT = Math.min(1, clockT + dt / CONFIG.dayLength * (me.sit ? 3 : 1));
+  const P = CONFIG.phases, f = clockT * (P.length - 1), i = Math.min(P.length - 2, Math.floor(f)), k = f - i;
+  const top = mix(P[i].top, P[i + 1].top, k), bottom = mix(P[i].bottom, P[i + 1].bottom, k), sunC = mix(P[i].sun, P[i + 1].sun, k);
+  const lightV = P[i].light + (P[i + 1].light - P[i].light) * k;
+  const ctx = skyCanvas.getContext('2d'), gr = ctx.createLinearGradient(0, 0, 0, 256);
+  gr.addColorStop(0, '#' + top.getHexString()); gr.addColorStop(1, '#' + bottom.getHexString());
+  ctx.fillStyle = gr; ctx.fillRect(0, 0, 2, 256); skyTex.needsUpdate = true;
+  scene.fog.color.copy(bottom);
+  const az = THREE.MathUtils.degToRad(CONFIG.sunAzimuth), el = 0.28 - clockT * 0.4;
+  sun.position.set(Math.sin(az) * 300, Math.sin(el) * 300, -Math.cos(az) * 300);
+  sun.material.color.copy(sunC); sun.visible = el > -0.05;
+  sunLight.position.copy(sun.position); sunLight.color.copy(sunC); sunLight.intensity = lightV * 0.9;
+  hemi.intensity = 0.25 + lightV * 0.5;
+  const night = clamp((0.6 - lightV) / 0.4, 0, 1);
+  for (const m of nightLights) m.material.color.set(night > 0.5 ? 0xffd27a : 0x2a2a3a);
+  const name = P[Math.round(f)].name;
+  if (name !== lastPhase) { $('clock').textContent = name; lastPhase = name; }
+}
+
+// ======================================================================
+// 7. 앉기, 사진 찍기, 사진첩
+// ======================================================================
+const actBtn = $('act'), msg = (t) => { $('msg').textContent = t; };
+function nearestSpot() { return CONFIG.sitSpots.find((s) => Math.hypot(s.x - me.x, s.z - me.z) < 1.6) || null; }
+function act() {
+  if (me.sit) { me.sit = false; msg('일어났어요.'); return; }
+  const s = nearestSpot(); if (!s) return;
+  me.x = s.x; me.z = s.z; me.sit = true; me.target = null; avatar.hop = 1; me.joy++;
+  msg(`${s.label}에 앉았어요. 해가 조금 더 빨리 집니다.`);
+}
+function updateActButton() {
+  const s = nearestSpot(), label = me.sit ? '일어나기' : s ? `${s.label}에 앉기` : `${CONFIG.sitSpots[0].label} 쪽으로 걸어가 보세요`;
+  if (actBtn.textContent !== label) actBtn.textContent = label;
+  actBtn.disabled = !me.sit && !s;
+}
+const photoKey = CONFIG.storageKey + '-photos';
+let photos = [];
+try { photos = JSON.parse(localStorage.getItem(photoKey) || '[]'); } catch (e) { photos = []; }
+function renderPhotos() {
+  const ul = $('photos'); ul.textContent = '';
+  for (const p of photos) {
+    const li = document.createElement('li'), img = document.createElement('img'), span = document.createElement('span');
+    img.src = p.src; img.alt = `${p.label}에 찍은 사진`; span.textContent = p.label; li.append(img, span); ul.append(li);
+  }
+  $('empty').hidden = photos.length > 0;
+}
+function snap() {
+  renderer.render(scene, camera);
+  const c = document.createElement('canvas'); c.width = 480; c.height = 270;
+  c.getContext('2d').drawImage(canvas, 0, 0, c.width, c.height);
+  photos.unshift({ src: c.toDataURL('image/jpeg', 0.75), label: lastPhase });
+  photos = photos.slice(0, 12);
+  try { localStorage.setItem(photoKey, JSON.stringify(photos)); } catch (e) { /* 저장 공간이 차면 이번 화면에만 남긴다 */ }
+  renderPhotos(); avatar.hop = 1; me.joy++;
+  const fl = $('flash'); fl.style.transition = 'none'; fl.style.opacity = '0.8';
+  requestAnimationFrame(() => { fl.style.transition = 'opacity .4s'; fl.style.opacity = '0'; });
+  msg('사진을 찍었어요. 아래 사진첩에 모였습니다.');
+}
+
+// ======================================================================
+// 8. 함께 보기 : 같은 페이지를 연 사람끼리 위치와 자세를 주고받는다
+//    아티팩트에서는 claude.ai의 room, user 기능을, Cloudflare(cloudflare-deploy)에서는 같은 모양의 서버를 쓴다
+//    받은 값은 다른 사람이 보낸 것이라 범위와 형식을 확인하고 쓴다
+// ======================================================================
+const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 무시해도 동작함 */ } } };
+const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+let myNick = store.get(CONFIG.storageKey + '-nick');
+if (!myNick) { myNick = pick(CONFIG.nickA) + ' ' + pick(CONFIG.nickB); store.set(CONFIG.storageKey + '-nick', myNick); }
+let myHood = store.get(CONFIG.storageKey + '-hood');
+if (!CONFIG.friendHoods.includes(myHood)) { myHood = pick(CONFIG.friendHoods); store.set(CONFIG.storageKey + '-hood', myHood); }
+setHood(avatar, myHood);
+const meTag = $('meTag'); meTag.textContent = myNick;
+const friends = new Map();
+let room = null, userCap = null, lastSent = '', sendT = 0;
+const num = (v, a, b, d) => (typeof v === 'number' && isFinite(v) ? clamp(v, a, b) : d);
+const cleanNick = (v) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f-\u009f​-‏‪-‮]/g, '').slice(0, 16) : '');
+function friendFor(p) {
+  let f = friends.get(p.peer); if (f) return f;
+  const pr = p.presence || {};
+  const hood = typeof pr.hood === 'string' && /^#[0-9a-f]{6}$/i.test(pr.hood) ? pr.hood : pick(CONFIG.friendHoods);
+  const a = makeAvatar(hood), tag = document.createElement('div');
+  tag.className = 'tag'; tag.textContent = '친구'; stage.appendChild(tag);
+  f = { a, tag, by: p.by, nick: '', x: CONFIG.start.x, z: CONFIG.start.z, face: 0, sit: false, joy: null, placed: false, pos: new THREE.Vector3() };
+  friends.set(p.peer, f); return f;
+}
+function dropFriend(id) { const f = friends.get(id); if (!f) return; scene.remove(f.a.group); f.tag.remove(); friends.delete(id); }
+async function nameFriends() {
+  const ids = [...friends.values()].map((f) => f.by).filter(Boolean);
+  const ps = userCap && ids.length ? await userCap.profiles(ids).catch(() => ({})) : {};
+  for (const f of friends.values()) f.tag.textContent = (f.by && ps[f.by] && ps[f.by].name) || f.nick || '친구';
+}
+function applyPeers(change) {
+  const A = CONFIG.walkArea;
+  for (const p of change.left) dropFriend(p.peer);
+  for (const p of [...change.joined, ...change.updated]) {
+    if (p.sameTab || p.kind !== 'viewer') continue;
+    const pr = p.presence || {}; if (pr.v !== 1) continue;
+    const isNew = !friends.has(p.peer), f = friendFor(p);
+    f.x = num(pr.x, A.x0, A.x1, f.x); f.z = num(pr.z, A.z0, A.z1, f.z); f.face = num(pr.face, -1e3, 1e3, 0); f.sit = pr.sit === true;
+    f.nick = cleanNick(pr.nick);
+    const j = num(pr.joy, 0, 1e6, 0); if (f.joy !== null && j !== f.joy) f.a.hop = 1; f.joy = j;
+    if (isNew && change.joined.includes(p)) msg('누군가 들어왔어요.');
+  }
+  nameFriends();
+  const n = change.peers.filter((p) => p.kind === 'viewer' && !(p.isMe && !p.sameTab)).length;
+  $('people').hidden = false; $('solo').hidden = true; $('peopleN').textContent = Math.max(1, n);
+}
+function updateFriends(dt) {
+  for (const f of friends.values()) {
+    const t = new THREE.Vector3(f.x, 0, f.z);
+    if (!f.placed) { f.pos.copy(t); f.placed = true; }
+    const moving = f.pos.distanceTo(t) > 0.03 && !f.sit;
+    f.pos.lerp(t, Math.min(1, dt * 8));
+    f.a.group.position.x = f.pos.x; f.a.group.position.z = f.pos.z; f.a.group.rotation.y = f.face;
+    poseAvatar(f.a, moving, f.sit, dt);
+  }
+  if (!room) return;
+  sendT -= dt; if (sendT > 0) return; sendT = 0.1;   // 0.1초마다 확인하고, 바뀌었을 때만 보낸다
+  const state = { v: 1, x: +me.x.toFixed(2), z: +me.z.toFixed(2), face: +me.face.toFixed(2), sit: me.sit, joy: me.joy, hood: myHood, nick: meTag.textContent.slice(0, 16) };
+  const js = JSON.stringify(state); if (js === lastSent) return; lastSent = js;
+  room.presence(state).catch(() => {});
+}
+(async () => {
+  if (!window.claude || !window.claude.use) { $('solo').hidden = false; return; }
+  try {
+    const [r, u] = await Promise.all([window.claude.use('room'), window.claude.use('user')]);
+    userCap = u;
+    if (u && await u.isOwner()) { meTag.textContent = CONFIG.ownerName; myHood = CONFIG.ownerHood; setHood(avatar, myHood); }
+    else { const m = u ? await u.me() : null; if (m && m.name) meTag.textContent = m.name; }
+    if (!r) { $('solo').hidden = false; return; }
+    room = r;
+    room.onPeers(applyPeers, () => { room = null; for (const id of [...friends.keys()]) dropFriend(id); $('people').hidden = true; $('solo').hidden = false; });
+  } catch (e) { room = null; $('solo').hidden = false; }
+})();
+
+// ======================================================================
+// 9. 입력 : 키보드, 조작판, 화면 끌기, 바닥 누르기
+// ======================================================================
+let down = null;
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+canvas.addEventListener('pointerdown', (e) => { down = { x: e.clientX, y: e.clientY, drag: false }; canvas.setPointerCapture(e.pointerId); });
+canvas.addEventListener('pointermove', (e) => {
+  if (!down) return;
+  const dx = e.clientX - down.x, dy = e.clientY - down.y;
+  if (!down.drag && Math.hypot(dx, dy) > 6) down.drag = true;
+  if (down.drag) { me.face -= dx * 0.005; me.pitch = clamp(me.pitch + dy * 0.004, 0.05, 1.1); down.x = e.clientX; down.y = e.clientY; }
+});
+canvas.addEventListener('pointerup', (e) => {
+  if (!down) return; const wasDrag = down.drag; down = null; if (wasDrag) return;
+  const r = canvas.getBoundingClientRect();
+  ndc.set((e.clientX - r.left) / r.width * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const hit = ray.intersectObject(scene.getObjectByName('ground'))[0];
+  if (!hit) return;
+  me.sit = false;
+  const spot = CONFIG.sitSpots.find((s) => Math.hypot(s.x - hit.point.x, s.z - hit.point.z) < 1.5);
+  me.target = spot ? { x: spot.x, z: spot.z + 0.01, then: act } : { x: hit.point.x, z: hit.point.z };
+});
+canvas.addEventListener('pointercancel', () => { down = null; });
+const hold = (id, set) => { const el = $(id);
+  el.addEventListener('pointerdown', (e) => { e.preventDefault(); set(1); el.setPointerCapture(e.pointerId); });
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((ev) => el.addEventListener(ev, () => set(0))); };
+hold('fwd', (v) => { padMove = v; }); hold('back', (v) => { padMove = -v; });
+hold('turnL', (v) => { padTurn = v; }); hold('turnR', (v) => { padTurn = -v; });
+actBtn.addEventListener('click', act);
+$('snap').addEventListener('click', snap);
+addEventListener('keydown', (e) => {
+  const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd'].includes(k)) { keys[k] = true; e.preventDefault(); }
+  else if (k === 'p') snap();
+  else if (k === ' ' && document.activeElement?.tagName !== 'BUTTON') { e.preventDefault(); act(); }
+});
+addEventListener('keyup', (e) => { const k = e.key.length === 1 ? e.key.toLowerCase() : e.key; keys[k] = false; });
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+
+// ======================================================================
+// 10. 화면 크기, 이름표, 반복
+// ======================================================================
+$('title').textContent = CONFIG.title; document.title = CONFIG.title; $('subtitle').textContent = CONFIG.subtitle;
+function resize() { const w = stage.clientWidth, h = stage.clientHeight; if (!w || !h) return; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+new ResizeObserver(resize).observe(stage); resize();
+const tmp = new THREE.Vector3();
+function place(tag, obj) {
+  tmp.copy(obj.position); tmp.y += 1.95; tmp.project(camera);
+  const vis = tmp.z < 1 && Math.abs(tmp.x) < 1.1 && Math.abs(tmp.y) < 1.1;
+  tag.style.display = vis ? '' : 'none';
+  if (vis) { tag.style.left = ((tmp.x + 1) / 2 * 100) + '%'; tag.style.top = ((1 - tmp.y) / 2 * 100) + '%'; }
+}
+renderPhotos();
+let last = performance.now();
+function loop(now) {
+  const dt = clamp((now - last) / 1000, 0, 0.05); last = now;   // 첫 프레임 시각이 시작 시각보다 앞설 수 있어 0 아래로 내려가지 않게 한다
+  move(dt); updateTime(dt); updateFriends(dt); updateActButton();
+  renderer.render(scene, camera);
+  place(meTag, avatar.group); for (const f of friends.values()) place(f.tag, f.a.group);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

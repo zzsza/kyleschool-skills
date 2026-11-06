@@ -1,0 +1,13 @@
+{
+  // deploy.sh build가 __NAME__, __OWNER_NAME__을 채운다
+  "name": "__NAME__",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-10-01",
+  "assets": { "directory": "./public", "binding": "ASSETS" },
+  "durable_objects": {
+    "bindings": [{ "name": "ROOMS", "class_name": "Room" }]
+  },
+  // 무료 요금제에서는 SQLite 기반 Durable Object만 쓸 수 있다
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }],
+  "vars": { "OWNER_NAME": "__OWNER_NAME__" }
+}
