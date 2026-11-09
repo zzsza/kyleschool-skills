@@ -18,7 +18,7 @@ Claude Code, Codex 어느 쪽에서 실행해도 결과가 같다. 필요한 것
 | `template/wrangler.jsonc` | Cloudflare 설정. 이름과 주인 이름을 `build`가 채움 |
 
 ```bash
-T=~/.claude/skills/cloudflare-deploy/scripts/deploy.sh
+T=.claude/skills/cloudflare-deploy/scripts/deploy.sh
 ```
 
 ## 순서
@@ -32,7 +32,7 @@ T=~/.claude/skills/cloudflare-deploy/scripts/deploy.sh
    ```
 5. **dev로 미리 보기** : `$T dev <배포 폴더> 8787`로 미리 보기 서버를 띄우고 http://localhost:8787 을 연다(Claude Code 데스크톱 앱이면 `.claude/launch.json`에 등록해 미리 보기 창으로 연다). 탭 두 개를 열어 서로 캐릭터가 보이는지, 사람 수가 2로 바뀌는지 확인한다. 다른 사람처럼 들어와 보려면 시크릿 창이나 다른 브라우저를 쓴다(이름표와 옷 색이 달라짐). `scripts/smoke_test.mjs`로 서버만 따로 확인할 수도 있다. 주인 키는 배포 폴더의 `.owner-key`에 있다.
    ```bash
-   node ~/.claude/skills/cloudflare-deploy/scripts/smoke_test.mjs http://localhost:8787 [주인 키]
+   node .claude/skills/cloudflare-deploy/scripts/smoke_test.mjs http://localhost:8787 [주인 키]
    ```
 6. **deploy** : 사용자에게 먼저 묻고 실행한다(외부 공개). 로그인이 필요하면 스크립트가 기기 인증(`wrangler login --device`)을 띄운다. 사용자가 브라우저에서 로그인하고, 터미널에 나온 코드가 맞는지 확인한 뒤 5분 안에 승인한다. 로그인 명령은 사용자가 화면의 코드를 볼 수 있는 터미널에서 실행한다(데스크톱 앱이면 터미널 패널). 기본 로그인(`wrangler login`)은 쓰지 않는다. 콜백 서버가 `[::1]:8976`에서만 2분 대기해서 브라우저에 'localhost 연결 거부'가 뜨는 경우가 있다(2026-11-06). 계정에 workers.dev 서브도메인이 없으면 wrangler가 하나 정하라고 묻는다.
    ```bash
