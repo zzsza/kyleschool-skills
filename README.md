@@ -9,20 +9,21 @@
 
 ## 설치
 
-Claude Code에 이렇게 말하면 됩니다.
+스킬은 작업할 프로젝트 폴더에 설치합니다. Claude Code를 그 폴더에서 열고 이렇게 말하면 됩니다.
 
 ```
-https://github.com/zzsza/kyleschool-skills 의 skills 폴더에 있는 스킬을 내 Claude Code 스킬로 설치해 줘
+https://github.com/zzsza/kyleschool-skills 의 skills 폴더에 있는 스킬을 이 프로젝트의 .claude/skills 폴더에 설치해 줘
 ```
 
-직접 설치하려면 터미널에서 아래 두 줄을 실행합니다.
+직접 설치하려면 프로젝트 폴더의 터미널에서 아래 세 줄을 실행합니다.
 
 ```bash
 git clone https://github.com/zzsza/kyleschool-skills.git
-mkdir -p ~/.claude/skills && cp -R kyleschool-skills/skills/* ~/.claude/skills/
+mkdir -p .claude/skills && cp -R kyleschool-skills/skills/* .claude/skills/
+rm -rf kyleschool-skills
 ```
 
-설치한 뒤 Claude Code를 새로 열면 스킬이 보입니다.
+설치한 뒤 Claude Code를 그 프로젝트 폴더에서 새로 열면 스킬이 보입니다. 다른 폴더에서 쓰려면 그 폴더에도 설치합니다.
 
 ## 쓰는 법
 
