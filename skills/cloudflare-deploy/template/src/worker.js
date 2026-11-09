@@ -24,7 +24,8 @@ export default {
 
     if (url.pathname === '/__together/owner' && request.method === 'POST') {
       const body = await request.json().catch(() => ({}));
-      return Response.json({ owner: isOwnerKey(env, body.key) });
+      const owner = isOwnerKey(env, body.key);
+      return Response.json({ owner, name: owner ? cleanName(env.OWNER_NAME) : null });
     }
 
     return env.ASSETS.fetch(request);

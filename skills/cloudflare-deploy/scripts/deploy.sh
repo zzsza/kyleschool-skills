@@ -28,12 +28,14 @@ cmd_build() {
   mkdir -p "$out"
   out="$(cd "$out" && pwd)"
   site="$(cd "$site" && pwd)"
-  [[ $out != "$site"* ]] || die "배포 폴더를 사이트 폴더 안에 두면 안 됩니다"
+  [[ $out != "$site" && $out != "$site"/* ]] || die "배포 폴더를 사이트 폴더 안에 두면 안 됩니다"
 
   # 설정 파일은 처음 한 번만 만든다(카일이 고친 값을 덮어쓰지 않음)
   if [[ ! -f $out/wrangler.jsonc ]]; then
+    # JSON 문자열을 깨는 따옴표와 역슬래시만 뺀다. &, / 같은 글자는 그대로 둔다
     local safe_owner=${owner_name//\"/}
-    sed -e "s/__NAME__/$name/" -e "s/__OWNER_NAME__/${safe_owner//\//\\/}/" "$TEMPLATE/wrangler.jsonc" > "$out/wrangler.jsonc"
+    safe_owner=${safe_owner//\\/}
+    SKILL_NAME="$name" SKILL_OWNER="$safe_owner" perl -pe 's/__NAME__/$ENV{SKILL_NAME}/g; s/__OWNER_NAME__/$ENV{SKILL_OWNER}/g' "$TEMPLATE/wrangler.jsonc" > "$out/wrangler.jsonc"
   fi
   [[ -f $out/.gitignore ]] || cp "$TEMPLATE/gitignore" "$out/.gitignore"
 
@@ -41,7 +43,8 @@ cmd_build() {
   rm -rf "$out/src" "$out/public"
   cp -R "$TEMPLATE/src" "$out/src"
   mkdir -p "$out/public"
-  (cd "$site" && find . -type f ! -name '.DS_Store' ! -path './.git/*' -print0 | while IFS= read -r -d '' f; do
+  # 기획 문서와 숨김 파일은 올리지 않는다(주소, 메모가 인터넷에 공개되는 것을 막음)
+  (cd "$site" && find . -type f ! -name 'plan.md' ! -path './.*' ! -path './node_modules/*' -print0 | while IFS= read -r -d '' f; do
     mkdir -p "$out/public/$(dirname "$f")"
     cp "$f" "$out/public/$f"
   done)
@@ -89,6 +92,7 @@ cmd_dev() {
 cmd_deploy() {
   local out=${1:-}
   [[ -f ${out:-.}/wrangler.jsonc ]] || die "먼저 build를 실행하세요: $out"
+  out="$(cd "$out" && pwd)"   # 아래에서 cd 한 뒤에도 links가 같은 폴더를 찾도록 절대 경로로 바꾼다
   cd "$out"
 
   # "Not logged in"도 'logged in'을 포함하므로 로그인됐을 때만 나오는 문구로 확인한다

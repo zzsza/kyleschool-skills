@@ -30,15 +30,15 @@ T=~/.claude/skills/cloudflare-deploy/scripts/deploy.sh
    ```bash
    $T build <사이트 폴더> <배포 폴더> <이름> <주인 이름>
    ```
-5. **dev로 미리 보기** : `$T dev <배포 폴더> 8787`로 미리 보기 서버를 띄우고 http://localhost:8787 을 연다(Claude Code 데스크톱 앱이면 `.claude/launch.json`에 등록해 미리 보기 창으로 연다). 탭 두 개를 열어 서로 캐릭터가 보이는지, 사람 수가 2로 바뀌는지 확인한다. `scripts/smoke_test.mjs`로 서버만 따로 확인할 수도 있다.
+5. **dev로 미리 보기** : `$T dev <배포 폴더> 8787`로 미리 보기 서버를 띄우고 http://localhost:8787 을 연다(Claude Code 데스크톱 앱이면 `.claude/launch.json`에 등록해 미리 보기 창으로 연다). 탭 두 개를 열어 서로 캐릭터가 보이는지, 사람 수가 2로 바뀌는지 확인한다. 다른 사람처럼 들어와 보려면 시크릿 창이나 다른 브라우저를 쓴다(이름표와 옷 색이 달라짐). `scripts/smoke_test.mjs`로 서버만 따로 확인할 수도 있다. 주인 키는 배포 폴더의 `.owner-key`에 있다.
    ```bash
-   node ~/.claude/skills/cloudflare-deploy/scripts/smoke_test.mjs http://localhost:8787
+   node ~/.claude/skills/cloudflare-deploy/scripts/smoke_test.mjs http://localhost:8787 [주인 키]
    ```
 6. **deploy** : 사용자에게 먼저 묻고 실행한다(외부 공개). 로그인이 필요하면 스크립트가 기기 인증(`wrangler login --device`)을 띄운다. 사용자가 브라우저에서 로그인하고, 터미널에 나온 코드가 맞는지 확인한 뒤 5분 안에 승인한다. 로그인 명령은 사용자가 화면의 코드를 볼 수 있는 터미널에서 실행한다(데스크톱 앱이면 터미널 패널). 기본 로그인(`wrangler login`)은 쓰지 않는다. 콜백 서버가 `[::1]:8976`에서만 2분 대기해서 브라우저에 'localhost 연결 거부'가 뜨는 경우가 있다(2026-11-06). 계정에 workers.dev 서브도메인이 없으면 wrangler가 하나 정하라고 묻는다.
    ```bash
    $T deploy <배포 폴더>
    ```
-7. **링크 전달** : 공유 링크와 주인 링크를 따로 알려 준다. 주인 링크는 공유하지 말라고 적는다. 주소는 그 작업의 기획 문서(예 : `plan.md`)에 적는다.
+7. **링크 전달** : 공유 링크와 주인 링크를 따로 알려 준다. 주인 링크는 공유하지 말라고 적는다. 공유 링크만 그 작업의 기획 문서(예 : `plan.md`)에 적고, 주인 링크는 파일에 적지 않는다. `build`는 `plan.md`와 숨김 파일을 올리지 않는다.
 
 다시 올릴 때는 `build`와 `deploy`만 다시 한다. 설정(`wrangler.jsonc`)과 주인 키(`.owner-key`)는 처음 만든 것을 계속 쓴다.
 
@@ -88,4 +88,5 @@ room?.onPeers((change) => {
 - 상태는 저장하지 않는다. 모두 나가면 방이 비고, 사진첩 같은 개인 기록은 각자 브라우저(localStorage)에 남는다.
 - 아티팩트 기능 중 `room`, `user`만 대신한다. `db` 같은 다른 기능은 Cloudflare에서 `null`이 된다.
 - `.owner-key`, `.dev.vars`는 git에 올리지 않는다(템플릿 `.gitignore`).
+- `build` 뒤 화면이 그대로면 강력 새로고침(Mac : Cmd+Shift+R)을 한다. 일반 새로고침에 이전 페이지가 나온 적이 있다(2026-11-09 로컬 `dev`, 원인 미확인).
 - 파일을 더블클릭해서 열면(`file://`) 함께 보기와 모델 불러오기가 안 된다. 항상 `dev`나 배포 주소로 연다.

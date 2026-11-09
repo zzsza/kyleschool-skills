@@ -23,17 +23,19 @@
   let by = store.get('together-by');
   if (!by) { by = crypto.randomUUID(); store.set('together-by', by); }
 
+  // 주인 확인 결과 { owner, name }. 이름은 서버의 OWNER_NAME(build의 주인 이름)이다
   let ownerCheck = null;
-  function isOwner() {
+  function ownerInfo() {
     if (!ownerCheck) {
-      ownerCheck = !ownerKey ? Promise.resolve(false) : fetch('/__together/owner', {
+      ownerCheck = !ownerKey ? Promise.resolve({ owner: false, name: null }) : fetch('/__together/owner', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ key: ownerKey }),
-      }).then((r) => r.json()).then((j) => j.owner === true).catch(() => false);
+      }).then((r) => r.json()).then((j) => ({ owner: j.owner === true, name: j.name || null })).catch(() => ({ owner: false, name: null }));
     }
     return ownerCheck;
   }
+  const isOwner = () => ownerInfo().then((i) => i.owner);
 
   let room = null;
   function getRoom() {
@@ -113,7 +115,7 @@
 
   const user = {
     isOwner,
-    async me() { return { id: by, name: store.get('together-name') || null }; },
+    async me() { const i = await ownerInfo(); return { id: by, name: i.name || store.get('together-name') || null }; },
     // 다른 사람 이름. 주인은 서버가 OWNER_NAME으로 채우고, 나머지는 각자 정한 이름(없으면 null)
     async profiles(ids) {
       const out = {};

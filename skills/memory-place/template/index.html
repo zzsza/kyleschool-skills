@@ -40,6 +40,7 @@ button.primary{background:var(--accent);color:#2a160a;border-color:var(--accent)
 .pad button{min-width:48px}
 .msg{margin:0;min-height:1.6em}
 .help{margin:0;color:var(--ink-dim);font-size:13px}
+@media (pointer:coarse){.keys{display:none}}
 h2{font-family:var(--f-title);font-size:20px;margin:10px 0 0}
 .photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin:0;padding:0;list-style:none}
 .photos img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:3px;border:1px solid var(--line)}
@@ -78,7 +79,7 @@ h2{font-family:var(--f-title);font-size:20px;margin:10px 0 0}
     <button id="snap">사진 찍기</button>
   </div>
   <p class="msg" id="msg" aria-live="polite"></p>
-  <p class="help">화면을 끌어서 둘러보고, 바닥을 누르면 그쪽으로 걸어갑니다. 키보드는 ↑↓ 걷기, ←→ 돌기, 스페이스 앉기, P 사진.</p>
+  <p class="help">화면을 끌어서 둘러보고, 바닥을 누르면 그쪽으로 걸어갑니다.<span class="keys"> 키보드는 ↑↓ 걷기, ←→ 돌기, 스페이스 앉기, P 사진.</span></p>
 
   <h2>사진첩</h2>
   <ul class="photos" id="photos"></ul>
@@ -99,8 +100,8 @@ const CONFIG = {
   title: '나의 장소',
   subtitle: '걸어 다니다 앉아서 해가 지는 걸 봅니다.',
   storageKey: 'my-place',            // 브라우저 저장 이름. 장소마다 다르게
-  ownerName: '주인',                  // 아티팩트 밖에서 주인 이름은 서버 설정(cloudflare-deploy)이 정한다
-  ownerHood: '#5aa6de',               // 주인 후드 색
+  ownerName: '주인',                  // 주인 이름을 못 받았을 때만 쓴다. Cloudflare에서는 build의 주인 이름, 아티팩트에서는 프로필 이름이 우선
+  ownerHood: '#5aa6de',               // 만든 사람(주인)의 옷 색. 내 파일로 열 때와 주인 링크로 들어올 때 적용. 다른 사람은 friendHoods에서 정해짐
   friendHoods: ['#f2a65a', '#8cc084', '#e98aa6', '#b59be0', '#f0c75e', '#6cc4c4'],
   nickA: ['졸린', '수줍은', '신난', '느긋한', '배고픈', '반짝이는', '용감한', '다정한'],
   nickB: ['갈매기', '고양이', '여행자', '산책자', '구름', '노을', '나무', '기타'],
@@ -342,7 +343,7 @@ function applyPeers(change) {
     if (isNew && change.joined.includes(p)) msg('누군가 들어왔어요.');
   }
   nameFriends();
-  const n = change.peers.filter((p) => p.kind === 'viewer' && !(p.isMe && !p.sameTab)).length;
+  const n = change.peers.filter((p) => p.kind === 'viewer').length;   // 화면에 보이는 캐릭터 수와 맞춘다(같은 브라우저의 다른 탭도 센다)
   $('people').hidden = false; $('solo').hidden = true; $('peopleN').textContent = Math.max(1, n);
 }
 function updateFriends(dt) {
@@ -361,11 +362,11 @@ function updateFriends(dt) {
   room.presence(state).catch(() => {});
 }
 (async () => {
-  if (!window.claude || !window.claude.use) { $('solo').hidden = false; return; }
+  if (!window.claude || !window.claude.use) { myHood = CONFIG.ownerHood; setHood(avatar, myHood); $('solo').hidden = false; return; }   // 내 파일로 열면 내 옷 색
   try {
     const [r, u] = await Promise.all([window.claude.use('room'), window.claude.use('user')]);
     userCap = u;
-    if (u && await u.isOwner()) { meTag.textContent = CONFIG.ownerName; myHood = CONFIG.ownerHood; setHood(avatar, myHood); }
+    if (u && await u.isOwner()) { const m = await u.me(); meTag.textContent = (m && m.name) || CONFIG.ownerName; myHood = CONFIG.ownerHood; setHood(avatar, myHood); }
     else { const m = u ? await u.me() : null; if (m && m.name) meTag.textContent = m.name; }
     if (!r) { $('solo').hidden = false; return; }
     room = r;
