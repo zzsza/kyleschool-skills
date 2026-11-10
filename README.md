@@ -36,3 +36,7 @@ rm -rf kyleschool-skills
 - 친구와 같이 볼 때만 : Node.js 22 이상(`npx`), Cloudflare 무료 계정
 
 Mac과 Windows 11(Git Bash)에서 확인했습니다.
+
+## 라이선스
+
+MIT
