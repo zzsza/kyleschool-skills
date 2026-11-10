@@ -30,7 +30,7 @@ T=.claude/skills/cloudflare-deploy/scripts/deploy.sh
    ```bash
    $T build <사이트 폴더> <배포 폴더> <이름> <주인 이름>
    ```
-5. **dev로 미리 보기** : `$T dev <배포 폴더> 8787`로 미리 보기 서버를 띄우고 http://localhost:8787 을 연다(Claude Code 데스크톱 앱이면 `.claude/launch.json`에 등록해 미리 보기 창으로 연다). 탭 두 개를 열어 서로 캐릭터가 보이는지, 사람 수가 2로 바뀌는지 확인한다. 다른 사람처럼 들어와 보려면 시크릿 창이나 다른 브라우저를 쓴다(이름표와 옷 색이 달라짐). `scripts/smoke_test.mjs`로 서버만 따로 확인할 수도 있다. 주인 키는 배포 폴더의 `.owner-key`에 있다.
+5. **dev로 미리 보기** : `$T dev <배포 폴더> 8787`로 미리 보기 서버를 띄우고 http://localhost:8787 을 연다(Claude Code 데스크톱 앱이면 `.claude/launch.json`에 등록해 미리 보기 창으로 연다). 탭 두 개를 열어 서로 캐릭터가 보이는지, 사람 수가 2로 바뀌는지 확인한다. 다른 사람처럼 들어와 보려면 시크릿 창이나 다른 브라우저를 쓴다(이름표와 옷 색이 달라짐). `scripts/smoke_test.mjs`로 서버만 따로 확인할 수도 있다. 주인 키는 배포 폴더의 `.owner-key`에 있다. `dev`가 실행되지 않으면(Windows 일부 환경) 건너뛰고, 배포한 주소에서 탭 두 개로 확인한다.
    ```bash
    node .claude/skills/cloudflare-deploy/scripts/smoke_test.mjs http://localhost:8787 [주인 키]
    ```
