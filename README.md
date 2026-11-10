@@ -35,4 +35,4 @@ rm -rf kyleschool-skills
 - Claude Code
 - 친구와 같이 볼 때만 : Node.js 22 이상(`npx`), Cloudflare 무료 계정
 
-Mac에서 확인했습니다. Windows는 아직 확인하지 않았습니다(배포 스크립트가 bash).
+Mac과 Windows 11(Git Bash)에서 확인했습니다.
